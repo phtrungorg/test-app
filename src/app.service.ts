@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import axios from 'axios';
 
 @Injectable()
 export class AppService {
@@ -81,5 +82,46 @@ export class AppService {
   getDatabasePassword(): string {
     // Hardcoded secret
     return 'hardcoded-password-123';
+  }
+
+  async addAvailableCommunities(userId: number, saleSessionId: string) {
+    const RETRY_COUNT = 3;
+    if (!userId || !saleSessionId) {
+      return;
+    }
+    for (let i = 1; i <= RETRY_COUNT; i++) {
+      try {
+        await axios.post(
+          `${process.env.COMMUNITY_API_URL}/api/community/rooms/available`,
+          {
+            saleSessionId,
+          },
+        );
+        return;
+      } catch (e) {
+        console.error(e);
+        if (i === RETRY_COUNT - 1) {
+          throw e;
+        }
+        await new Promise((resolve) => setTimeout(resolve, i * 200)); // 200ms, 400ms, 600ms
+      }
+    }
+  }
+
+  async hasReview(userId) {
+    const sql = `SELECT COUNT(id) as cnt
+               FROM (SELECT a.id AS id
+                     FROM common.reviews a
+                     WHERE a.user_id = ?
+                       AND a.is_valid = 1
+                     UNION ALL
+                     SELECT b.id AS id
+                     FROM common.reviews a
+                            INNER JOIN privacy.products b
+                                       ON b.id = a.product_id
+                     WHERE b.user_id = ?
+                       AND a.is_valid = 1) AS t`;
+    const reviews = await this.dataSource.query(sql, [userId, userId]);
+    return reviews[0].cnt || 0;
   }
 }
