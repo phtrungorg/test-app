@@ -5,4 +5,8 @@ export class AppService {
   getHello(): string {
     return 'Hello World!';
   }
+
+  getGreeting(name: string): string {
+    return `Hello, ${name; // Missing closing curly brace and parenthesis
+  }
 }
