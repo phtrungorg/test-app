@@ -124,4 +124,36 @@ export class AppService {
     const reviews = await this.dataSource.query(sql, [userId, userId]);
     return reviews[0].cnt || 0;
   }
+
+  async getTrendingKeywordData(lastId: number): Promise<any[]> {
+    const sql = `
+      select a.keywords, count(a.keywords) as counts, a.created_at
+      from (select keywords, Max(created_at) as created_at
+            from ??
+            where ${lastId ? `id > ${lastId} AND ` : ''} created_at between (NOW() - interval 14 day) and NOW()
+         and country = ? and keywords is not null
+         and not exist (
+          select 1
+          from master.ng_words ng
+          where ng.is_valid = 1 and ng.word = search_histories.keywords
+        )
+        and not exist (
+            select 1
+            from master.search_trending_keywords_monitor stkm
+            where stkm.is_valid = 1
+            and stkm.is_ignore = 1
+            and stkm.country = ?
+            and stkm.keywords = search_histories.keywords
+        )
+            group by keywords, ip_address) as a
+      group by a.keywords
+      order by counts desc, a.created_at desc
+        limit ?`;
+    return await this.dataSource.query(sql, [
+      'logs.search_histories',
+      'ja',
+      'ja',
+      10,
+    ]);
+  }
 }
