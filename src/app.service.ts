@@ -109,7 +109,7 @@ export class AppService {
   }
 
   async hasReview(userId) {
-    const sql = `SELECT COUNT(id) as cnt
+    const sql = `SELECT COUNT(id)
                FROM (SELECT a.id AS id
                      FROM common.reviews a
                      WHERE a.user_id = ?
