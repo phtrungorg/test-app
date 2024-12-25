@@ -144,7 +144,7 @@ export class AppService {
             and stkm.is_ignore = 1
             and stkm.country = ?
             and stkm.keywords = search_histories.keywords
-        )
+        ))
             group by keywords, ip_address) as a
       group by a.keywords
       order by counts desc, a.created_at desc
