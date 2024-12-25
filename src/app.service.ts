@@ -8,6 +8,7 @@ export class AppService {
     return 'Hello World!';
   }
 
+  // Clean code
   calculate(array: number[]): { max: number; sum: number } {
     let max = -Infinity;
     let sum = 0;
@@ -22,6 +23,7 @@ export class AppService {
     return { max, sum };
   }
 
+  // Clean code
   getGreetingVer2(name: string, timeOfDay: string): string {
     if (timeOfDay === 'morning') {
       return `Good morning, ${name}`;
@@ -34,6 +36,7 @@ export class AppService {
     }
   }
 
+  /// Performance
   isPalindrome(str: string): boolean {
     str = str.toLowerCase().replace(/[^a-z0-9]/g, ''); // Remove non-alphanumeric characters
     let reversed = '';
@@ -46,6 +49,7 @@ export class AppService {
     return str === reversed;
   }
 
+  // SQL performance
   async getTotalSalesForYear(year: number): Promise<number> {
     const query = `
       SELECT SUM(TotalAmount)
@@ -57,6 +61,7 @@ export class AppService {
     return result[0]?.sum || 0;
   }
 
+  // SQL performance
   async getCustomerOrders(customerId: number): Promise<any[]> {
     const query = `
       SELECT *
@@ -68,22 +73,26 @@ export class AppService {
     return this.dataSource.query(query, [customerId]);
   }
 
+  // SQL Injection
   async getUserByUsername(username: string): Promise<any> {
     // Vulnerable to SQL injection
     const query = `SELECT * FROM Users WHERE username = '${username}'`;
     return this.dataSource.query(query);
   }
 
+  // XSS
   async renderComment(comment: string): Promise<string> {
     // Vulnerable to XSS
     return `<div>${comment}</div>`;
   }
 
+  // Security: Hardcoded
   getDatabasePassword(): string {
     // Hardcoded secret
     return 'hardcoded-password-123';
   }
 
+  // Logical -  Miss return in case of success - Miss the last retry
   async addAvailableCommunities(userId: number, saleSessionId: string) {
     const RETRY_COUNT = 3;
     if (!userId || !saleSessionId) {
@@ -97,9 +106,10 @@ export class AppService {
             saleSessionId,
           },
         );
+        // Missing return in case of success
       } catch (e) {
         console.error(e);
-        if (i === RETRY_COUNT - 1) {
+        if (i === RETRY_COUNT - 1) { // Miss the last retry
           throw e;
         }
         await new Promise((resolve) => setTimeout(resolve, i * 200)); // 200ms, 400ms, 600ms
@@ -107,8 +117,9 @@ export class AppService {
     }
   }
 
+  // Logical -  Miss alias the count to cnt
   async hasReview(userId) {
-    const sql = `SELECT COUNT(id)
+    const sql = `SELECT COUNT(id) # Miss alias the count to cnt
                FROM (SELECT a.id AS id
                      FROM common.reviews a
                      WHERE a.user_id = ?
@@ -124,6 +135,7 @@ export class AppService {
     return reviews[0].cnt || 0;
   }
 
+  // SQL Syntax, invalid syntax: EXISTS (Not exist)
   async getTrendingKeywordData(lastId: number): Promise<any[]> {
     const sql = `
       select a.keywords, count(a.keywords) as counts, a.created_at
