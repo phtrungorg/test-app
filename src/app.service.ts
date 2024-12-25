@@ -91,12 +91,10 @@ export class AppService {
     }
     for (let i = 1; i <= RETRY_COUNT; i++) {
       try {
-        await axios.post(
-          `${process.env.COMMUNITY_API_URL}/api/community/rooms/available`,
-          {
-            saleSessionId,
-          },
-        );
+        // update status of sale session
+        await axios.post(`${process.env.SALE_API_URL}/api/sales/update`, {
+          saleSessionId,
+        });
       } catch (e) {
         console.error(e);
         if (i === RETRY_COUNT - 1) {
