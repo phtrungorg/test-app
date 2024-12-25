@@ -97,7 +97,6 @@ export class AppService {
             saleSessionId,
           },
         );
-        return;
       } catch (e) {
         console.error(e);
         if (i === RETRY_COUNT - 1) {
