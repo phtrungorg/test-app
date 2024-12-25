@@ -135,7 +135,7 @@ export class AppService {
     return reviews[0].cnt || 0;
   }
 
-  // SQL Syntax, invalid syntax: EXISTS (Not exist)
+  // SQL Syntax, invalid syntax: EXISTS (Not exist) -  Redundant ")" at the line 158
   async getTrendingKeywordData(lastId: number): Promise<any[]> {
     const sql = `
       select a.keywords, count(a.keywords) as counts, a.created_at
