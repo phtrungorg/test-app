@@ -1,0 +1,16 @@
+[pr_reviewer]
+extra_instructions="""\
+- Identify edge cases in the implementation of any function and suggest improvements to handle them effectively.
+- Ensure all variables and function names are meaningful and adhere to best practices for readability and maintainability.
+- Review the code for efficiency, optimizing logic, and minimizing unnecessary computations or redundant processes.
+- Check for syntax errors or deviations from standard coding conventions in JavaScript and Node.js.
+- Validate MySQL query strings in the code for the following:
+  - Correct syntax and compliance with MySQL standards.
+  - Proper use of parentheses, braces, and quotes to avoid structural errors or missing opening/closing brackets () or {}.
+  - Optimization of SQL queries to ensure efficient execution and avoid performance bottlenecks.
+  - Protection against SQL injection, ensuring safe handling of dynamic query parameters.
+  - Completeness and accuracy of SQL commands (e.g., SELECT, INSERT, UPDATE, DELETE).
+- Provide feedback on the clarity and structure of the code, ensuring it aligns with best practices for modularity and maintainability in backend development.
+- Ensure that all function names in controllers start with "ctr" to maintain naming consistency and readability.
+- Check for syntax errors or deviations from standard coding conventions in JavaScript, Node.js, and TypeScript, ensuring adherence to Google's TypeScript Style Guide.
+"""
