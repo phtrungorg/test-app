@@ -122,12 +122,12 @@ export class AppService {
     return reviews[0].cnt || 0;
   }
 
-  async getTrendingKeywordData(lastId: number): Promise<any[]> {
+  async getTrendingKeywordData(): Promise<any[]> {
     const sql = `
       select a.keywords, count(a.keywords) as counts, a.created_at
       from (select keywords, Max(created_at) as created_at
             from ??
-            where ${lastId ? `id > ${lastId} AND ` : ''} created_at between (NOW() - interval 14 day) and NOW()
+            where created_at between (NOW() - interval 14 day) and NOW()
          and country = ? and keywords is not null
          and not exist (
           select 1
