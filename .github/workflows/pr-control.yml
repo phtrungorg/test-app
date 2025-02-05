@@ -15,16 +15,18 @@ jobs:
           TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
 
           # Check if the target branch is "staging"
-          if [[ "$TARGET_BRANCH" == "staging" ]]; then
+          if [ "$TARGET_BRANCH" = "staging" ]; then
             echo "The target branch is staging, checking the pull request author."
-            echo "::set-output name=is_staging::true"
+            echo "is_staging=true" >> $GITHUB_OUTPUT
           else
             echo "The target branch is not staging, skipping the check."
-            echo "::set-output name=is_staging::false"
+            echo "is_staging=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Check PR author for staging branch
+        id: check-author
         if: steps.check-branch.outputs.is_staging == 'true'
+        continue-on-error: true
         run: |
           # List of users allowed to create pull requests to the staging branch
           ALLOWED_USERS="phtrung212"
@@ -33,7 +35,7 @@ jobs:
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
 
           # Check if the author is in the allowed users list
-          if [[ $ALLOWED_USERS != *"$PR_AUTHOR"* ]]; then
+          if [[ "$ALLOWED_USERS" != *"$PR_AUTHOR"* ]]; then
             echo "User $PR_AUTHOR is not authorized to create pull requests to the staging branch."
             exit 1
           else
@@ -41,12 +43,11 @@ jobs:
           fi
 
       - name: Close PR if unauthorized for staging branch
-        if: steps.check-branch.outputs.is_staging == 'true' && failure()
+        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-author.outcome == 'failure'
         run: |
-          # Close the pull request if the author is not authorized
           echo "Closing pull request #${{ github.event.pull_request.number }}"
-          curl -X POST \
+          curl -X PATCH \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/update \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
             -d '{"state": "closed"}'
