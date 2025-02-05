@@ -2,6 +2,7 @@ name: Pull Request Control for Staging Branch
 
 permissions:
   pull-requests: write
+  issues: write
 
 on:
   pull_request:
@@ -16,7 +17,7 @@ jobs:
         run: |
           # Get the target branch of the pull request
           TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
-
+          
           # Check if the target branch is "staging"
           if [ "$TARGET_BRANCH" = "staging" ]; then
             echo "The target branch is staging, checking the pull request author."
@@ -48,9 +49,20 @@ jobs:
       - name: Close PR if unauthorized for staging branch
         if: steps.check-branch.outputs.is_staging == 'true' && steps.check-author.outcome == 'failure'
         run: |
-          echo "Closing pull request #${{ github.event.pull_request.number }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          COMMENT_BODY="Closed: User @${PR_AUTHOR} is not authorized to create pull requests to the staging branch."
+
+          echo "Adding comment to pull request #${PR_NUMBER}"
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/comments \
+            -d "{\"body\": \"${COMMENT_BODY}\"}"
+
+          echo "Closing pull request #${PR_NUMBER}"
           curl -X PATCH \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER} \
             -d '{"state": "closed"}'
