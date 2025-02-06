@@ -12,33 +12,56 @@ jobs:
   check-pr:
     runs-on: ubuntu-latest
     steps:
+      # Bước 1: Kiểm tra nhánh đích của PR có phải là staging không
       - name: Check target branch
         id: check-branch
         run: |
-          # Get the target branch of the pull request
           TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
-          
-          # Check if the target branch is "staging"
           if [ "$TARGET_BRANCH" = "staging" ]; then
-            echo "The target branch is staging, checking the pull request author."
+            echo "The target branch is staging."
             echo "is_staging=true" >> $GITHUB_OUTPUT
           else
-            echo "The target branch is not staging, skipping the check."
+            echo "The target branch is not staging."
             echo "is_staging=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check PR author for staging branch
-        id: check-author
+      # Bước 2: Kiểm tra PR author có thuộc Team X không
+      - name: Check if PR author is in Team X
+        id: check-team
         if: steps.check-branch.outputs.is_staging == 'true'
+        run: |
+          # Thay đổi ORG và TEAM_SLUG cho phù hợp
+          ORG="your_org"
+          TEAM_SLUG="vn-team"
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          
+          echo "Checking if user ${PR_AUTHOR} is a member of team ${TEAM_SLUG} in org ${ORG}"
+          
+          # Gọi API kiểm tra membership
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/orgs/${ORG}/teams/${TEAM_SLUG}/memberships/${PR_AUTHOR}")
+          
+          echo "HTTP response: $response"
+          
+          if [ "$response" -eq 200 ]; then
+            echo "User ${PR_AUTHOR} is a member of team ${TEAM_SLUG}."
+            echo "is_team_x=true" >> $GITHUB_OUTPUT
+          else
+            echo "User ${PR_AUTHOR} is NOT a member of team ${TEAM_SLUG}."
+            echo "is_team_x=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Bước 3: Chỉ kiểm tra PR nếu user thuộc Team X
+      - name: Check PR author for team X
+        id: check-author
+        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-team.outputs.is_team_x == 'true'
         continue-on-error: true
         run: |
-          # List of users allowed to create pull requests to the staging branch
+          # Danh sách các user được phép tạo PR đến staging (trong ví dụ này chỉ cho phép user 'phtrung212')
           ALLOWED_USERS="phtrung212"
-
-          # Get the pull request author's username
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-
-          # Check if the author is in the allowed users list
+          
           if [[ "$ALLOWED_USERS" != *"$PR_AUTHOR"* ]]; then
             echo "User $PR_AUTHOR is not authorized to create pull requests to the staging branch."
             exit 1
@@ -46,23 +69,24 @@ jobs:
             echo "User $PR_AUTHOR is authorized to create pull requests to the staging branch."
           fi
 
-      - name: Close PR if unauthorized for staging branch
-        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-author.outcome == 'failure'
+      # Bước 4: Nếu user thuộc Team X mà không hợp lệ, thêm comment và đóng PR
+      - name: Comment and Close PR if unauthorized for team X
+        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-team.outputs.is_team_x == 'true' && steps.check-author.outcome == 'failure'
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-          COMMENT_BODY="Closed: User @${PR_AUTHOR} is not authorized to create pull requests to the staging branch."
-
+          COMMENT_BODY="Closed: User @${PR_AUTHOR} (thuộc Team X) không được phép tạo pull requests đến nhánh staging."
+          
           echo "Adding comment to pull request #${PR_NUMBER}"
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/comments \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
             -d "{\"body\": \"${COMMENT_BODY}\"}"
-
+          
           echo "Closing pull request #${PR_NUMBER}"
           curl -X PATCH \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER} \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}" \
             -d '{"state": "closed"}'
