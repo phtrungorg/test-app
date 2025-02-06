@@ -3,7 +3,6 @@ name: Pull Request Control for Staging Branch
 permissions:
   pull-requests: write
   issues: write
-  org: read
 
 on:
   pull_request:
