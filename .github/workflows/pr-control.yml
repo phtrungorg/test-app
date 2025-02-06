@@ -39,7 +39,7 @@ jobs:
           
           # Call the GitHub API to check team membership
           response=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.ORG_TOKEN }}" \
             "https://api.github.com/orgs/${ORG}/teams/${TEAM_SLUG}/memberships/${PR_AUTHOR}")
           
           echo "HTTP response: $response"
