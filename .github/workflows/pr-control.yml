@@ -12,7 +12,7 @@ jobs:
   check-pr:
     runs-on: ubuntu-latest
     steps:
-      # Bước 1: Kiểm tra nhánh đích của PR có phải là staging không
+      # Step 1: Check if the target branch of the PR is "staging"
       - name: Check target branch
         id: check-branch
         run: |
@@ -25,19 +25,19 @@ jobs:
             echo "is_staging=false" >> $GITHUB_OUTPUT
           fi
 
-      # Bước 2: Kiểm tra PR author có thuộc Team X không
-      - name: Check if PR author is in Team X
+      # Step 2: Verify if the PR author is a member of the GogoJungle Vietnam team
+      - name: Check if PR author is in GogoJungle Vietnam team
         id: check-team
         if: steps.check-branch.outputs.is_staging == 'true'
         run: |
-          # Thay đổi ORG và TEAM_SLUG cho phù hợp
-          ORG="your_org"
+          # Set the organization and team slug for GogoJungle Vietnam
+          ORG="phtrungorg"
           TEAM_SLUG="vn-team"
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
           
           echo "Checking if user ${PR_AUTHOR} is a member of team ${TEAM_SLUG} in org ${ORG}"
           
-          # Gọi API kiểm tra membership
+          # Call the GitHub API to check team membership
           response=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/orgs/${ORG}/teams/${TEAM_SLUG}/memberships/${PR_AUTHOR}")
@@ -45,20 +45,20 @@ jobs:
           echo "HTTP response: $response"
           
           if [ "$response" -eq 200 ]; then
-            echo "User ${PR_AUTHOR} is a member of team ${TEAM_SLUG}."
-            echo "is_team_x=true" >> $GITHUB_OUTPUT
+            echo "User ${PR_AUTHOR} is a member of team ${TEAM_SLUG} (GogoJungle Vietnam)."
+            echo "is_team=true" >> $GITHUB_OUTPUT
           else
-            echo "User ${PR_AUTHOR} is NOT a member of team ${TEAM_SLUG}."
-            echo "is_team_x=false" >> $GITHUB_OUTPUT
+            echo "User ${PR_AUTHOR} is NOT a member of team ${TEAM_SLUG} (GogoJungle Vietnam)."
+            echo "is_team=false" >> $GITHUB_OUTPUT
           fi
 
-      # Bước 3: Chỉ kiểm tra PR nếu user thuộc Team X
-      - name: Check PR author for team X
+      # Step 3: For users in GogoJungle Vietnam, check if they are authorized to create PRs to the staging branch
+      - name: Check PR author authorization for GogoJungle Vietnam team
         id: check-author
-        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-team.outputs.is_team_x == 'true'
+        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-team.outputs.is_team == 'true'
         continue-on-error: true
         run: |
-          # Danh sách các user được phép tạo PR đến staging (trong ví dụ này chỉ cho phép user 'phtrung212')
+          # List of allowed users for creating PRs to staging; for example, only allow user 'phtrung212'
           ALLOWED_USERS="phtrung212"
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
           
@@ -69,13 +69,13 @@ jobs:
             echo "User $PR_AUTHOR is authorized to create pull requests to the staging branch."
           fi
 
-      # Bước 4: Nếu user thuộc Team X mà không hợp lệ, thêm comment và đóng PR
-      - name: Comment and Close PR if unauthorized for team X
-        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-team.outputs.is_team_x == 'true' && steps.check-author.outcome == 'failure'
+      # Step 4: If the user from GogoJungle Vietnam is unauthorized, add a comment and close the PR
+      - name: Comment and Close PR if unauthorized for GogoJungle Vietnam team
+        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-team.outputs.is_team == 'true' && steps.check-author.outcome == 'failure'
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-          COMMENT_BODY="Closed: User @${PR_AUTHOR} (thuộc Team X) không được phép tạo pull requests đến nhánh staging."
+          COMMENT_BODY="Closed: User @${PR_AUTHOR} (member of GogoJungle Vietnam) is not authorized to create pull requests to the staging branch."
           
           echo "Adding comment to pull request #${PR_NUMBER}"
           curl -X POST \
