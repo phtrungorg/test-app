@@ -1,4 +1,4 @@
-name: Pull Request Control for Staging Branch
+name: Only accept pulling request into staging branch via specific user
 
 permissions:
   pull-requests: write
@@ -9,84 +9,66 @@ on:
     types: [opened, reopened, edited]
 
 jobs:
-  check-pr:
+  accept-pr-staging-control:
     runs-on: ubuntu-latest
+    env:
+      # Define allowed users as a comma-delimited string with commas at both ends for exact matching.
+      ALLOWED_USERS: "phtrung212"
+      ORG: "phtrungorg"
+      TEAM_SLUG: "vn-team"
     steps:
-      # Step 1: Check if the target branch of the PR is "staging"
-      - name: Check target branch
-        id: check-branch
+      - name: Check PR conditions and exit early if applicable
         run: |
+          echo "Starting PR checks..."
+          
+          # Check if the target branch is 'staging'
           TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
-          if [ "$TARGET_BRANCH" = "staging" ]; then
-            echo "The target branch is staging."
-            echo "is_staging=true" >> $GITHUB_OUTPUT
-          else
-            echo "The target branch is not staging."
-            echo "is_staging=false" >> $GITHUB_OUTPUT
+          if [ "$TARGET_BRANCH" != "staging" ]; then
+            echo "PR is not targeting the staging branch. Exiting early."
+            exit 0
           fi
 
-      # Step 2: Verify if the PR author is a member of the GogoJungle Vietnam team
-      - name: Check if PR author is in GogoJungle Vietnam team
-        id: check-team
-        if: steps.check-branch.outputs.is_staging == 'true'
-        run: |
-          # Set the organization and team slug for GogoJungle Vietnam
-          ORG="phtrungorg"
-          TEAM_SLUG="vn-team"
+          # Get the PR author
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          echo "PR author: $PR_AUTHOR"
           
-          echo "Checking if user ${PR_AUTHOR} is a member of team ${TEAM_SLUG} in org ${ORG}"
-          
-          # Call the GitHub API to check team membership
+          # If the author is in the allowed list, exit early
+          if [[ "$ALLOWED_USERS" == *",$PR_AUTHOR,"* ]]; then
+            echo "User $PR_AUTHOR is in the allowed list. Exiting early."
+            exit 0
+          fi
+
+          # Check if the author is a member of the GogoJungle Vietnam team
+          echo "Checking team membership for user $PR_AUTHOR in team ${TEAM_SLUG}..."
           response=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.ORG_TOKEN }}" \
             "https://api.github.com/orgs/${ORG}/teams/${TEAM_SLUG}/memberships/${PR_AUTHOR}")
+          echo "Team membership API response: $response"
           
-          echo "HTTP response: $response"
-          
-          if [ "$response" -eq 200 ]; then
-            echo "User ${PR_AUTHOR} is a member of team ${TEAM_SLUG} (GogoJungle Vietnam)."
-            echo "is_team=true" >> $GITHUB_OUTPUT
-          else
-            echo "User ${PR_AUTHOR} is NOT a member of team ${TEAM_SLUG} (GogoJungle Vietnam)."
-            echo "is_team=false" >> $GITHUB_OUTPUT
+          # If the user is not a member of the team, no further check is needed.
+          if [ "$response" -ne 200 ]; then
+            echo "User $PR_AUTHOR is not a member of the team. Exiting early."
+            exit 0
           fi
 
-      # Step 3: For users in GogoJungle Vietnam, check if they are authorized to create PRs to the staging branch
-      - name: Check PR author authorization for GogoJungle Vietnam team
-        id: check-author
-        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-team.outputs.is_team == 'true'
-        continue-on-error: true
-        run: |
-          # List of allowed users for creating PRs to staging; for example, only allow user 'phtrung212'
-          ALLOWED_USERS="phtrung212"
-          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-          
-          if [[ "$ALLOWED_USERS" != *"$PR_AUTHOR"* ]]; then
-            echo "User $PR_AUTHOR is not authorized to create pull requests to the staging branch."
-            exit 1
-          else
-            echo "User $PR_AUTHOR is authorized to create pull requests to the staging branch."
-          fi
-
-      # Step 4: If the user from GogoJungle Vietnam is unauthorized, add a comment and close the PR
-      - name: Comment and Close PR if unauthorized for GogoJungle Vietnam team
-        if: steps.check-branch.outputs.is_staging == 'true' && steps.check-team.outputs.is_team == 'true' && steps.check-author.outcome == 'failure'
-        run: |
+          # At this point, the user is a member of the team but not in the allowed list.
+          echo "User $PR_AUTHOR is in the team but not allowed to create PRs to staging."
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
           COMMENT_BODY="Closed: User @${PR_AUTHOR} (member of GogoJungle Vietnam) is not authorized to create pull requests to the staging branch."
           
-          echo "Adding comment to pull request #${PR_NUMBER}"
+          echo "Adding comment to PR #${PR_NUMBER}..."
           curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.ORG_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
             -d "{\"body\": \"${COMMENT_BODY}\"}"
           
-          echo "Closing pull request #${PR_NUMBER}"
+          echo "Closing PR #${PR_NUMBER}..."
           curl -X PATCH \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.ORG_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}" \
             -d '{"state": "closed"}'
+          
+          # Exit with a non-zero code to mark the check as failed.
+          exit 1
