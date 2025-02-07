@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Define allowed users as a comma-delimited string with commas at both ends for exact matching.
-      ALLOWED_USERS: "phtrung212"
+      ALLOWED_USERS: ",phtrung212,"
       ORG: "phtrungorg"
       TEAM_SLUG: "vn-team"
     steps:
@@ -58,14 +58,14 @@ jobs:
           
           echo "Adding comment to PR #${PR_NUMBER}..."
           curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.ORG_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
             -d "{\"body\": \"${COMMENT_BODY}\"}"
           
           echo "Closing PR #${PR_NUMBER}..."
           curl -X PATCH \
-            -H "Authorization: Bearer ${{ secrets.ORG_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}" \
             -d '{"state": "closed"}'
