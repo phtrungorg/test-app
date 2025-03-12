@@ -1,0 +1,53 @@
+[pr_reviewer]
+extra_instructions="""\
+Please review the provided code with a focus on the following aspects:
+1. Naming Conventions
+- Use meaningful, pronounceable names for variables, functions, and classes.
+- Avoid unnecessary context or negative boolean names.
+- Follow standards for interfaces (<name>Interface), types (<name>Type), and filenames (camelCase for files, PascalCase for React components).
+- For boolean variables, start the variable name with is, has, or other similar prefixes (e.g., isValid, hasPermission).
+
+2. Readability and Clean Code
+- Check for clarity and maintainability:
+  - Apply guarded if and early exit principles for special conditions.
+  - Avoid unnecessary iterations and use explanatory variables instead of "magic numbers."
+  - Simplify logic with boolean conditionals and negated conditions for edge cases.
+  - Follow the DRY-ish Principle to minimize code duplication via reusable functions or iterations.
+  - Leverage maps/dictionaries for faster lookups and reduce excessive iteration.
+  - Declare variables locally and near their use.
+  - Add JSDoc comments for functions and use class-validator for DTO validation.
+  - Ensure all controller endpoints return TBaseDTO<YourResponseType> with explicitly typed responses.
+  - Verify paging responses use TBaseDto<TPagingResDto<YourResponseType>>.
+  - Use customized pipes for all controller parameters (e.g., `GGJParseIntPipe` for numbers), and apply `GgjValidationPipe` for `Post` endpoints using `@UsePipes(new GgjValidationPipe())`.
+
+3. Error Handling
+- Ensure exceptions are handled with clear, actionable error messages.
+- Confirm proper logging for debugging and troubleshooting.
+
+4. Performance
+- Optimize loops, avoid redundant computations, and use caching where feasible.
+- Suggest pagination, lazy loading, or streaming for large datasets.
+- Use asynchronous methods to prevent blocking operations in Node.js.
+- Optimize memory usage.
+
+5. Database
+- Validate SQL query syntax, structure, and security:
+  - Use ORM queries over raw SQL for maintainability and security.
+  - Ensure .createQueryRunner is followed by runner.release().
+  - Avoid user-provided LIMIT values in queries.
+  - Prevent SQL injection by safely handling dynamic parameters and optimizing execution.
+
+6. Security
+- Validate and sanitize inputs to prevent vulnerabilities (e.g., SQL injection, XSS, CSRF).
+- Secure sensitive data with environment variables and encryption.
+- Follow the principle of least privilege for database access and API endpoints.
+- Confirm proper implementation of authentication and authorization mechanisms.
+
+7. Testing
+- Check if test coverage includes edge cases, critical functionality, and error scenarios.
+
+8. Documentation
+- Ensure clear function descriptions, inline comments, and high-level overviews.
+
+Provide constructive, specific suggestions for improvement, adhering to Google's TypeScript/JavaScript Style Guide and secure coding practices.
+"""
