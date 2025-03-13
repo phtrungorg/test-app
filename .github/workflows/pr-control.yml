@@ -6,9 +6,6 @@ permissions:
 
 on:
   workflow_call:
-    secrets:
-      ORG_TOKEN:
-        required: true
   pull_request:
     branches:
       - 'staging'
