@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "commojs",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
