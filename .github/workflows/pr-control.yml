@@ -9,6 +9,8 @@ on:
     secrets:
       ORG_TOKEN:
         required: true
+      GITHUB_TOKEN:
+        required: true
   pull_request:
     branches:
       - 'staging'
