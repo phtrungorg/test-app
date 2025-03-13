@@ -8,12 +8,12 @@ module.exports = {
   plugins: ['@typescript-eslint/eslint-plugin'],
   extends: [
     'plugin:@typescript-eslint/recommended',
-    'plugin:prettier/recommended',
+    'plugin:prettier/recommende
   ],
   root: true,
   env: {
     node: true,
-    jest: true,
+    jest: false,
   },
   ignorePatterns: ['.eslintrc.js'],
   rules: {
