@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "coo",
+    "module": "comm",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
