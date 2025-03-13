@@ -6,7 +6,10 @@ permissions:
 
 on:
   pull_request:
-    types: [opened, reopened]
+    branches:
+      - 'staging'
+      - 'release/OAM-[0-9]+'
+    types: [opened, reopened, synchronize]
 
 jobs:
   accept-pr-staging-control:
@@ -20,11 +23,10 @@ jobs:
       - name: Check PR conditions and exit early if applicable
         run: |
           echo "Starting PR checks..."
-          
-          # Check if the target branch is 'staging'
-          TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
-          if [ "$TARGET_BRANCH" != "staging" ]; then
-            echo "PR is not targeting the staging branch. Exiting early."
+          # Check event type
+          EVENT_TYPE="${{ github.event.action }}"
+          if [ "$EVENT_TYPE" == "synchronize" ]; then
+            echo "PR event is synchronize. Exiting early."
             exit 0
           fi
 
