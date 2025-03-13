@@ -5,11 +5,12 @@ permissions:
   issues: write
 
 on:
+  workflow_call:
   pull_request:
     branches:
       - 'staging'
       - 'release/OAM-[0-9]+'
-    types: [opened, reopened, synchronize]
+    
 
 jobs:
   accept-pr-staging-control:
