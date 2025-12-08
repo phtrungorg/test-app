@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  video-conversion-api:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./converted-videos:/app/converted-videos
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped

@@ -1,11 +1,12 @@
 const autocannon = require('autocannon');
 const { writeFileSync } = require('fs');
-const AWS_ACCESS_KEY_ID = 'AKIAVJWJ666666666666';
-const AWS_SECRET_ACCESS_KEY = '6666666666666666666666666666666666666666';
+const AWS_ACCESS_KEY_ID = '';
+const AWS_SECRET_ACCESS_KEY = '';
 const AWS_REGION = 'ap-northeast-1';
 // Configuration
 const config = {
-  url: 'http://localhost:8911/api/ggj/v1/surface/watch-live/5/status', // Replace with your actual endpoint URL and ID
+  url: 'http://localhost:8926/api/ggj/v1/surface/watch-live/1/view-slot/clean', // Replace with your actual endpoint URL and ID
+  method: 'POST',
   connections: 5000, // Number of concurrent connections
   duration: 60, // Duration of the test in seconds
   pipelining: 1, // Number of pipelined requests
