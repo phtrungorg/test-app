@@ -65,6 +65,7 @@ export default function () {
   try {
     const responseData = JSON.parse(accessRes.body);
     viewKey = responseData.data.viewerKey;
+    console.log('viewKey:', viewKey);
   } catch (e) {
     console.error('Failed to parse viewerKey from response:', e);
     return; // Exit if we can't get viewKey
@@ -86,7 +87,9 @@ export default function () {
   let slotId;
   try {
     const statusData = JSON.parse(statusInitRes.body);
-    slotId = statusData.slotId;
+    console.log('statusData:', statusData);
+    slotId = statusData.data.slotId;
+    console.log('slotId:', slotId);
   } catch (e) {
     console.error('Failed to parse slotId from status response:', e);
     return; // Exit if we can't get slotId
