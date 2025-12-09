@@ -177,7 +177,7 @@ export default function () {
     // 6. Get Notification (every 30s = every 3 iterations)
     // if (iteration % 3 === 0) {
     //   const notiRes = http.get(
-    //     `${BASE_URL}/api/notification/info`,
+    //     `${BASE_URL}/api/noti/new/count-unreview?lastRecord=0`,
     //     {
     //       headers: baseHeaders,
     //       tags: { endpoint: 'notification' },
