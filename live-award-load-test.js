@@ -121,6 +121,7 @@ export default function () {
         `${BASE_URL}/api/ggj/v1/surface/watch-live/${LIVE_ID}/status`,
         { headers: baseHeaders, tags: { endpoint: 'get_status' } }
       );
+      console.log('statusRes:', JSON.parse(statusRes.body));
 
       check(statusRes, {
         'get status 200': (r) => r.status === 200,
@@ -134,7 +135,7 @@ export default function () {
         `${BASE_URL}/api/ggj/v1/surface/watch-live/${LIVE_ID}/concurrent-viewers`,
         { headers: baseHeaders, tags: { endpoint: 'get_view_count' } }
       );
-      
+      console.log('viewRes:', JSON.parse(viewRes.body));
       check(viewRes, {
         'get view count 200': (r) => r.status === 200,
       });
@@ -151,7 +152,7 @@ export default function () {
           tags: { endpoint: 'keep_slot' },
         }
       );
-      
+      console.log('slotRes:', JSON.parse(slotRes.body));
       check(slotRes, {
         'keep slot 200': (r) => r.status === 200,
       });
