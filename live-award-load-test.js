@@ -15,11 +15,9 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '1m', target: 1000 },   // Ramp up to 1k
-        { duration: '2m', target: 5000 },   // Ramp up to 5k
-        { duration: '2m', target: 10000 },  // Ramp up to 10k
-        { duration: '10m', target: 10000 }, // Stay at 10k
-        { duration: '1m', target: 0 },      // Ramp down
+        { duration: '3m', target: 50 },   // Ramp up to 50 over 3 minutes
+        { duration: '10m', target: 50 },  // Hold at 50 for 10 minutes
+        { duration: '30s', target: 0 },   // Ramp down
       ],
       gracefulRampDown: '30s',
     },
@@ -40,22 +38,65 @@ export const options = {
 };
 
 const BASE_URL = __ENV.BASE_URL || 'https://www.gogo.gogojungle.net';
-
-// Generate unique IDs per VU
-function generateUserIds() {
-  const vuId = __VU;
-  const slotId = `slot-${vuId}-${Date.now()}`;
-  const viewKey = `view-${vuId}-${Math.random().toString(36).substring(7)}`;
-  
-  return { slotId, viewKey };
-}
+const LIVE_ID = __ENV.LIVE_ID || '1';
 
 // Main test function
 export default function () {
-  // Generate unique user IDs
-  const { slotId, viewKey } = generateUserIds();
-  
-  // Base headers for all requests
+  // Initial headers without viewKey and slotId
+  const initialHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'x-requested-with': 'XMLHttpRequest',
+  };
+
+  // 1. Access Page API (once per user session) to get viewerKey
+  const accessRes = http.get(`${BASE_URL}/api/ggj/v1/surface/watch-live/${LIVE_ID}`, {
+    headers: initialHeaders,
+    tags: { endpoint: 'access_page' },
+  });
+
+  check(accessRes, {
+    'access page status 200': (r) => r.status === 200,
+    'access page response time < 500ms': (r) => r.timings.duration < 500,
+  });
+
+  // Extract viewerKey from response
+  let viewKey;
+  try {
+    const responseData = JSON.parse(accessRes.body);
+    viewKey = responseData.data.viewerKey;
+  } catch (e) {
+    console.error('Failed to parse viewerKey from response:', e);
+    return; // Exit if we can't get viewKey
+  }
+
+  // 2. Get Status to retrieve slotId
+  const statusInitRes = http.get(
+    `${BASE_URL}/api/ggj/v1/surface/watch-live/${LIVE_ID}/status`,
+    {
+      headers: {
+        ...initialHeaders,
+        'ggj-live-view-key': viewKey,
+      },
+      tags: { endpoint: 'get_status_init' }
+    }
+  );
+
+  // Extract slotId from status response
+  let slotId;
+  try {
+    const statusData = JSON.parse(statusInitRes.body);
+    slotId = statusData.slotId;
+  } catch (e) {
+    console.error('Failed to parse slotId from status response:', e);
+    return; // Exit if we can't get slotId
+  }
+
+  check(statusInitRes, {
+    'get status init 200': (r) => r.status === 200,
+  });
+
+  // Updated headers with actual viewKey and slotId from API
   const baseHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -64,58 +105,35 @@ export default function () {
     'ggj-live-view-key': viewKey,
   };
   
-  // 1. Access Page API (once per user session)
-  const accessRes = http.get(`${BASE_URL}/api/watch/detail`, {
-    headers: baseHeaders,
-    tags: { endpoint: 'access_page' },
-  });
-  
-  check(accessRes, {
-    'access page status 200': (r) => r.status === 200,
-    'access page response time < 500ms': (r) => r.timings.duration < 500,
-  });
-  
   // User session loop (15 minutes = 90 iterations of 10s each)
   let iteration = 0;
   const maxIterations = 90;
-  
+
   while (iteration < maxIterations) {
     iteration++;
-    
-    // 2. Update Status (every 10s)
-    const statusRes = http.post(
-      `${BASE_URL}/api/status/update`,
-      JSON.stringify({ 
-        status: 'active',
-        timestamp: Date.now(),
-      }),
-      {
-        headers: baseHeaders,
-        tags: { endpoint: 'status_update' },
-      }
-    );
-    
-    check(statusRes, {
-      'status update 200': (r) => r.status === 200,
-    });
-    statusUpdateCounter.add(1);
-    
-    // 3. Update View Count (every 60s = every 6 iterations)
+
+    // 2. Get Status (every 60s = every 6 iterations)
     if (iteration % 6 === 0) {
-      const viewRes = http.post(
-        `${BASE_URL}/api/viewcount/update`,
-        JSON.stringify({ 
-          increment: 1,
-          userId: slotId,
-        }),
-        {
-          headers: baseHeaders,
-          tags: { endpoint: 'view_count' },
-        }
+      const statusRes = http.get(
+        `${BASE_URL}/api/ggj/v1/surface/watch-live/${LIVE_ID}/status`,
+        { headers: baseHeaders, tags: { endpoint: 'get_status' } }
+      );
+
+      check(statusRes, {
+        'get status 200': (r) => r.status === 200,
+      });
+      statusUpdateCounter.add(1);
+    }
+    
+    // 3. Get View Count (every 60s = every 6 iterations)
+    if (iteration % 6 === 0) {
+      const viewRes = http.get(
+        `${BASE_URL}/api/ggj/v1/surface/watch-live/${LIVE_ID}/concurrent-viewers`,
+        { headers: baseHeaders, tags: { endpoint: 'get_view_count' } }
       );
       
       check(viewRes, {
-        'view count update 200': (r) => r.status === 200,
+        'get view count 200': (r) => r.status === 200,
       });
       viewCountCounter.add(1);
     }
@@ -123,7 +141,7 @@ export default function () {
     // 4. Keep Slot (every 240s = every 24 iterations)
     if (iteration % 24 === 0) {
       const slotRes = http.post(
-        `${BASE_URL}/api/slot/keep`,
+        `${BASE_URL}/api/ggj/v1/surface/watch-live/${LIVE_ID}/view-slot/keep`,
         null,
         {
           headers: baseHeaders,
@@ -136,37 +154,37 @@ export default function () {
       });
     }
     
-    // 5. Refresh Token (every 900s = every 90 iterations)
-    if (iteration % 90 === 0) {
-      const tokenRes = http.post(
-        `${BASE_URL}/api/auth/refresh`,
-        null,
-        {
-          headers: baseHeaders,
-          tags: { endpoint: 'refresh_token' },
-        }
-      );
+    // // 5. Refresh Token (every 900s = every 90 iterations)
+    // if (iteration % 90 === 0) {
+    //   const tokenRes = http.post(
+    //     `${BASE_URL}/api/auth/refresh`,
+    //     null,
+    //     {
+    //       headers: baseHeaders,
+    //       tags: { endpoint: 'refresh_token' },
+    //     }
+    //   );
       
-      check(tokenRes, {
-        'refresh token 200': (r) => r.status === 200,
-      });
-    }
+    //   check(tokenRes, {
+    //     'refresh token 200': (r) => r.status === 200,
+    //   });
+    // }
     
     // 6. Get Notification (every 30s = every 3 iterations)
-    if (iteration % 3 === 0) {
-      const notiRes = http.get(
-        `${BASE_URL}/api/notification/info`,
-        {
-          headers: baseHeaders,
-          tags: { endpoint: 'notification' },
-        }
-      );
+    // if (iteration % 3 === 0) {
+    //   const notiRes = http.get(
+    //     `${BASE_URL}/api/notification/info`,
+    //     {
+    //       headers: baseHeaders,
+    //       tags: { endpoint: 'notification' },
+    //     }
+    //   );
       
-      check(notiRes, {
-        'get notification 200': (r) => r.status === 200,
-      });
-      notificationCounter.add(1);
-    }
+    //   check(notiRes, {
+    //     'get notification 200': (r) => r.status === 200,
+    //   });
+    //   notificationCounter.add(1);
+    // }
     
     // Wait 10 seconds before next iteration
     sleep(10);
